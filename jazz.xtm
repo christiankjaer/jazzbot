@@ -1,0 +1,240 @@
+(sys:load "libs/external/instruments_ext.xtm")
+(sys:load "libs/core/pc_ivl.xtm")
+(define-sampler drums sampler_note_hermite_c sampler_fx)
+(define-sampler piano sampler_note_hermite_c sampler_fx)
+(define-sampler bass sampler_note_hermite_c sampler_fx)
+
+(bind-func dsp:DSP
+  (lambda (in time chan dat)
+    (+ (drums in time chan dat)
+       (piano in time chan dat)
+       (bass in time chan dat))))
+
+(dsp:set! dsp)
+
+(define drum-path "/Users/christian/Samples/salamanderDrumkit/OH/")
+(set-sampler-index drums (string-append drum-path "kick_OH_F_9.wav") *gm-kick* 0 0 0 1)
+(set-sampler-index drums (string-append drum-path "snareStick_OH_F_9.wav") *gm-side-stick* 0 0 0 1)
+(set-sampler-index drums (string-append drum-path "snare_OH_Ghost_5.wav") *gm-snare* 0 0 0 1)
+(set-sampler-index drums (string-append drum-path "hihatClosed_OH_F_20.wav") *gm-closed-hi-hat* 0 0 0 1)
+(set-sampler-index drums (string-append drum-path "hihatFoot_OH_MP_8.wav") *gm-pedal-hi-hat* 0 0 0 1)
+(set-sampler-index drums (string-append drum-path "hihatOpen_OH_FF_6.wav") *gm-open-hi-hat* 0 0 0 1)
+(set-sampler-index drums (string-append drum-path "loTom_OH_FF_8.wav") *gm-low-floor-tom* 0 0 0 1)
+(set-sampler-index drums (string-append drum-path "hiTom_OH_FF_9.wav") *gm-hi-floor-tom* 0 0 0 1)
+(set-sampler-index drums (string-append drum-path "crash1_OH_FF_6.wav") *gm-crash* 0 0 0 1)
+(set-sampler-index drums (string-append drum-path "ride2_OH_FF_4.wav") *gm-ride* 0 0 0 1)
+(set-sampler-index drums (string-append drum-path "china1_OH_FF_8.wav") *gm-chinese* 0 0 0 1)
+(set-sampler-index drums (string-append drum-path "cowbell_FF_9.wav") *gm-cowbell* 0 0 0 1)
+(set-sampler-index drums (string-append drum-path "bellchime_F_3.wav") *gm-open-triangle* 0 0 0 1)
+(set-sampler-index drums (string-append drum-path "ride1Bell_OH_F_6.wav") *gm-ride-bell* 0 0 0 1)
+
+(define parse-salamander-piano
+  (lambda (file-list)
+    (map (lambda (fname)
+           (let ((result (regex:matched fname "^.*([ABCDEFG][#b]?[0-9])v([0-9]+)\.(wav|aif|aiff|ogg)$")))
+             (if (null? result)
+                 (begin (println 'Cannot 'parse 'filename: fname)
+                        #f)
+                 ;; load 4th velocity layer only
+                 (if (= (string->number (caddr result)) 4)
+                     (list fname
+                           (note-name-to-midi-number (cadr result))
+                           0
+                           0)
+                     #f))))
+         file-list)))
+
+(load-sampler piano
+              "/Users/christian/Samples/piano/44.1khz16bit"
+              0 ;; 'sound bank' index
+              parse-salamander-piano)
+
+(define parse-bass
+  (lambda (file-list)
+    (map (lambda (fname)
+           (let ((result (regex:matched fname "^pizz_([abcdefg][#b]?[0-9])_([pmf][abcd])\.(wav|aif|aiff|ogg)$")))
+             (if (null? result)
+                 (begin (println 'Cannot 'parse 'filename: fname)
+                        #f)
+                 ;; load 4th velocity layer only
+                 (if (eq? (string->symbol (caddr result)) 'pa)
+                     (list fname
+                           (note-name-to-midi-number (cadr result))
+                           0
+                           0)
+                     #f))))
+         file-list)))
+(load-sampler bass
+              "/Users/christian/Samples/doublebass/pizz"
+              0 ;; 'sound bank' index
+              parse-bass)
+
+(define *metro* (make-metro 160))
+
+(define rhythms
+  '(
+    (
+     (0 *gm-ride*)
+     (1 *gm-ride* *gm-pedal-hi-hat*)
+     (2 *gm-ride*)
+     (3 *gm-ride* *gm-pedal-hi-hat*)
+     )
+    (
+     (0 *gm-ride*)
+     (1 *gm-ride* *gm-pedal-hi-hat*)
+     (2 *gm-ride*)
+     (3 *gm-ride* *gm-pedal-hi-hat*)
+     (11/3 *gm-ride*)
+     )
+    (
+     (0 *gm-ride*)
+     (1 *gm-ride* *gm-pedal-hi-hat*)
+     (5/3 *gm-ride*)
+     (2 *gm-ride*)
+     (3 *gm-ride* *gm-pedal-hi-hat*)
+     )
+    (
+     (0 *gm-ride*)
+     (1 *gm-ride* *gm-pedal-hi-hat*)
+     (5/3 *gm-ride*)
+     (2 *gm-ride*)
+     (3 *gm-ride* *gm-pedal-hi-hat*)
+     (11/3 *gm-ride*)
+     )
+    (
+     (0 *gm-ride*)
+     (1 *gm-ride* *gm-pedal-hi-hat*)
+     (5/3 *gm-ride*)
+     (2 *gm-ride*)
+     (3 *gm-ride* *gm-pedal-hi-hat*)
+     (11/3 *gm-ride*)
+     )
+    )
+  )
+(define rhythm
+  '(
+    (0 *gm-ride*)
+    (1 *gm-ride* *gm-pedal-hi-hat*)
+    (2 *gm-ride*)
+    (3 *gm-ride* *gm-pedal-hi-hat*)
+    ))
+
+(define rhythm-crash
+  '((0 *gm-ride*)
+    (1 *gm-ride* *gm-pedal-hi-hat* *gm-side-stick*)
+    (2 *gm-ride*)
+    (3 *gm-ride* *gm-pedal-hi-hat* *gm-hi-floor-tom*)
+    (11/3 *gm-crash*)))
+
+(define play-beat
+  (lambda (down)
+    (for-each
+     (lambda (b)
+       (for-each
+        (lambda (note)
+          (play-note (*metro* (+ down (car b))) drums (eval note) 80 88200))
+        (cdr b)))
+     (random rhythms))
+    (callback (*metro* (+ down 4)) 'play-beat (+ down 4))))
+
+(random rhythms)
+(define *metro* (make-metro 120))
+(play-beat (*metro* 'get-beat 4))
+(walk (*metro* 'get-beat 4) progression)
+(comp (*metro* 'get-beat 4) progression)
+
+(and #t #f)
+
+(define play-beat #f)
+(define walk #f)
+(define comp #f)
+
+(define progression
+  '(
+    (5 -7)
+    (10 -7)
+    (3 7)
+    (8 ^7)
+    (1 ^7)
+    (7 7)
+    (0 ^7)
+    (0 ^7)
+
+    (0 -7)
+    (5 -7)
+    (10 7)
+    (3 ^7)
+    (8 ^7)
+    (2 7)
+    (7 ^7)
+    (7 ^7)
+
+    (9 -7)
+    (2 7)
+    (7 ^7)
+    (7 ^7)
+    (6 -7b5)
+    (11 7)
+    (4 ^7)
+    (0 7)
+
+    (5 -7)
+    (10 -7)
+    (3 7)
+    (8 ^7)
+    (1 ^7)
+    (1 -65)
+    (0 -7)
+    (11 o7)
+    (10 -7)
+    (3 7)
+    (8 ^7)
+    (0 7)
+
+    ))
+
+(define comp-patterns
+  '((0 5/3)
+    (2/3 2)
+    (0)))
+(define walk
+  (lambda (down chords)
+    (for-each
+     (lambda (note i)
+       (cond
+        ((and (= i 3) (not (null? (cdr chords))))
+        (play-note (*metro* (+ down i)) bass (+ (random '(-1 2))(+ 36 (caadr chords))) 127 22050))
+        (else
+         (play-note (*metro* (+ down i)) bass (+ 36 note) 127 22050)
+         )))
+     (apply pc:chord (car chords))
+     (range 0 4))
+    (callback (*metro* (+ down 4)) 'walk (+ down 4)
+              (cond ((null? (cdr chords)) progression)
+                    (else (cdr chords))))))
+
+(define comp
+  (lambda (down chords)
+    (for-each
+     (lambda (time)
+       (for-each
+        (lambda (note)
+          (play-note (*metro* (+ time down)) piano note 90 44100))
+        (pc:make-chord-fixed 60 4 (apply pc:chord (car chords)))))
+     (random comp-patterns))
+    (callback (*metro* (+ down 4)) 'comp (+ down 4)
+              (cond ((null? (cdr chords)) progression)
+                    (else (cdr chords))))))
+
+(define drop-1
+  (lambda (chord)
+    (cons (- (car chord) 12) (cdr chord))))
+(define drop-2
+  (lambda (chord)
+    (cons (car chord) (cons (- (cadr chord) 12) (cddr chord)))
+    ))
+
+(define drop-12
+  (lambda (chord)
+    (cons (- (car chord) 12) (cons (- (cadr chord) 12) (cddr chord)))
+    ))
